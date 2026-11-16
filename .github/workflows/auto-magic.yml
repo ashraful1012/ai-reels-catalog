@@ -1,0 +1,35 @@
+# Adds new magical AI full movies to catalog.json every day (scripts/auto_magic.py).
+# Phones pick up the new list automatically and get a notification.
+name: Auto add magical stories
+
+on:
+  schedule:
+    - cron: '30 3 * * *'      # every day 03:30 UTC (09:30 Bangladesh time)
+  workflow_dispatch: {}       # "Run workflow" button for a manual run
+
+permissions:
+  contents: write
+
+concurrency:
+  group: auto-magic
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --quiet pillow==10.4.0
+      - run: python scripts/auto_magic.py
+      - name: Commit the new list
+        run: |
+          if git diff --quiet; then echo "No changes today"; exit 0; fi
+          git config user.name "kahini-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add catalog.json scripts/state.json
+          git commit -m "Auto: new magical stories ($(date -u +%F))"
+          git push
